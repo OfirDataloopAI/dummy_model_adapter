@@ -98,8 +98,9 @@ def package_creation(project: dl.Project):
                                     is_global=True,
                                     package_type='ml',
                                     codebase=dl.GitCodebase(
+                                        type=dl.PackageCodebaseType.GIT,
                                         git_url='https://github.com/OfirDataloopAI/dummy_model_adapter',
-                                        git_tag='master'),
+                                        git_tag='v1'),
                                     modules=[module],
                                     service_config={
                                         'runtime': dl.KubernetesRuntime(pod_type=dl.INSTANCE_CATALOG_HIGHMEM_L,
@@ -114,10 +115,10 @@ def package_creation(project: dl.Project):
     #                                       'outputType': dl.AnnotationType.CLASSIFICATION,
     #                                       'tags': ['torch'], }}}
     # package = package.update()
-    s = package.services.list().items[0]
-    s.package_revision = package.version
-    s.versions['dtlpy'] = '1.74.9'
-    s.update(True)
+    # s = package.services.list().items[0]
+    # s.package_revision = package.version
+    # s.versions['dtlpy'] = '1.74.9'
+    # s.update(True)
     return package
 
 
@@ -131,11 +132,6 @@ def model_creation(package: dl.Package, project: dl.Project):
                                   tags=['pretrained', 'no-data'],
                                   dataset_id=None,
                                   scope='public',
-                                  # scope='project',
-                                  model_artifacts=[dl.LinkArtifact(
-                                      type=dl.PackageCodebaseType.GIT,
-                                      url='https://storage.googleapis.com/model-mgmt-snapshots/ResNet50/model.pth',
-                                      filename='model.pth')],
                                   status='trained',
                                   configuration={'weights_filename': 'model.pth',
                                                  'batch_size': 16,
