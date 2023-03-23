@@ -85,55 +85,6 @@ class ModelAdapter(dl.BaseModelAdapter):
         ...
 
 
-# def model_creation(project_name, env: str = 'prod'):
-#     dl.setenv(env)
-#     project = dl.projects.get(project_name)
-#
-#     codebase = dl.GitCodebase(git_url='https://github.com/dataloop-ai/dummy_model_adapter',
-#                               git_tag='master')
-#     model = project.models.create(model_name='Dummy',
-#                                   description='Dummy model implemented in pytorch',
-#                                   output_type=dl.AnnotationType.POINT,
-#                                   scope='public',
-#                                   codebase=codebase,
-#                                   tags=['torch'],
-#                                   default_configuration={
-#                                       'weights_filename': 'model.pth',
-#                                       'input_size': 256,
-#                                   },
-#                                   default_runtime=dl.KubernetesRuntime(pod_type=dl.INSTANCE_CATALOG_HIGHMEM_L,
-#                                                                        runner_image='gcr.io/viewo-g/modelmgmt/resnet:0.0.6',
-#                                                                        autoscaler=dl.KubernetesRabbitmqAutoscaler(
-#                                                                            min_replicas=0,
-#                                                                            max_replicas=1),
-#                                                                        concurrency=1),
-#                                   entry_point='dummy_adapter.py')
-#     return model
-
-
-# def snapshot_creation(project_name, model: dl.Model, env: str = 'prod', resnet_ver='50'):
-#     dl.setenv(env)
-#     project = dl.projects.get(project_name)
-#     bucket = dl.buckets.create(dl.BucketType.GCS,
-#                                gcs_project_name='viewo-main',
-#                                gcs_bucket_name='model-mgmt-snapshots',
-#                                gcs_prefix='ResNet{}'.format(resnet_ver))
-#     snapshot = model.snapshots.create(snapshot_name='pretrained-resnet{}'.format(resnet_ver),
-#                                       description='resnset{} pretrained on imagenet'.format(resnet_ver),
-#                                       tags=['pretrained', 'imagenet'],
-#                                       dataset_id=None,
-#                                       scope='public',
-#                                       # status='trained',
-#                                       configuration={'weights_filename': 'model.pth',
-#                                                      'classes_filename': 'classes.json'},
-#                                       project_id=project.id,
-#                                       bucket=bucket,
-#                                       labels=_get_imagenet_label_json()
-#                                       )
-#     return snapshot
-
-
-
 def package_creation(project: dl.Project):
     metadata = dl.Package.get_ml_metadata(cls=ModelAdapter,
                                           default_configuration={'weights_filename': 'model.pth',
@@ -195,8 +146,8 @@ def model_creation(package: dl.Package, project: dl.Project):
 
 
 if __name__ == "__main__":
-    env = 'prod'
-    project_name = 'Abeer N Ofir Project'
+    env = 'rc'
+    project_name = 'QA_MODELS_V3'
     dl.setenv(env)
     project = dl.projects.get(project_name)
     # package_creation(project)
