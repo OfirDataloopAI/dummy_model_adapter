@@ -133,6 +133,7 @@ def model_creation(package: dl.Package, project: dl.Project):
                                   scope='public',
                                   # scope='project',
                                   model_artifacts=[dl.LinkArtifact(
+                                      type=dl.PackageCodebaseType.GIT,
                                       url='https://storage.googleapis.com/model-mgmt-snapshots/ResNet50/model.pth',
                                       filename='model.pth')],
                                   status='trained',
