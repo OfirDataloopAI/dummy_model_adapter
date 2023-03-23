@@ -19,18 +19,28 @@ from dtlpy.utilities.dataset_generators.dataset_generator_torch import DatasetGe
 
 import random
 
-logger = logging.getLogger('cnn-adapter')
+logger = logging.getLogger('dummy-adapter')
 
 
+@dl.Package.decorators.module(name='model-adapter',
+                              description='Model Adapter for Dummy Model',
+                              init_inputs={'model_entity': dl.Model})
 class ModelAdapter(dl.BaseModelAdapter):
     """
-    cnn Model adapter using pytorch.
-    The class bind Dataloop model and snapshot entities with model code implementation
+    Dummy Model adapter using pytorch.
+    The class bind Dataloop model and model entities with model code implementation
     """
 
-    def __init__(self, model_entity):
-        super(ModelAdapter, self).__init__(model_entity)
+    def __init__(self, model_entity=None):
+        if not isinstance(model_entity, dl.Model):
+            # pending fix DAT-31398
+            if isinstance(model_entity, str):
+                model_entity = dl.models.get(model_id=model_entity)
+            if isinstance(model_entity, dict) and 'model_id' in model_entity:
+                model_entity = dl.models.get(model_id=model_entity['model_id'])
+
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        super(ModelAdapter, self).__init__(model_entity=model_entity)
 
     def load(self, local_path, **kwargs):
         logger.info("Loaded model successfully :P")
@@ -54,46 +64,51 @@ class ModelAdapter(dl.BaseModelAdapter):
             result = random.randint(1, 10)
             for index in range(result):
                 collection.add(annotation_definition=dl.Point(label=str(index), x=index * 10, y=index * 10),
-                               model_info={'name': "Faker",
+                               model_info={'name': "Dummy Model",
                                            'confidence': index * 0.1,
                                            'model_id': self.model_entity.id,
-                                           'snapshot_id': self.snapshot.id})
+                                           'dataset_id': self.model_entity.dataset_id})
                 logger.debug("Predicted {} ({})".format(str(index), index * 0.1))
             batch_annotations.append(collection)
+
         return batch_annotations
 
+    def convert_from_dtlpy(self, data_path, **kwargs):
+        """ Convert Dataloop structure data to model structured
+            Virtual method - need to implement
+            e.g. take dlp dir structure and construct annotation file
+        :param data_path: `str` local File System directory path where
+                           we already downloaded the data from dataloop platform
+        :return:
+        """
 
-def _get_imagenet_label_json():
-    import json
-    with open('imagenet_labels.json', 'r') as fh:
-        labels = json.load(fh)
-    return list(labels.values())
+        ...
 
 
-def model_creation(project_name, env: str = 'prod'):
-    dl.setenv(env)
-    project = dl.projects.get(project_name)
-
-    codebase = dl.GitCodebase(git_url='https://github.com/dataloop-ai/pytorch_adapters',
-                              git_tag='master')
-    model = project.models.create(model_name='Dummy',
-                                  description='Dummy model implemented in pytorch',
-                                  output_type=dl.AnnotationType.POINT,
-                                  scope='public',
-                                  codebase=codebase,
-                                  tags=['torch'],
-                                  default_configuration={
-                                      'weights_filename': 'model.pth',
-                                      'input_size': 256,
-                                  },
-                                  default_runtime=dl.KubernetesRuntime(pod_type=dl.INSTANCE_CATALOG_HIGHMEM_L,
-                                                                       runner_image='gcr.io/viewo-g/modelmgmt/resnet:0.0.6',
-                                                                       autoscaler=dl.KubernetesRabbitmqAutoscaler(
-                                                                           min_replicas=0,
-                                                                           max_replicas=1),
-                                                                       concurrency=1),
-                                  entry_point='dummy_adapter.py')
-    return model
+# def model_creation(project_name, env: str = 'prod'):
+#     dl.setenv(env)
+#     project = dl.projects.get(project_name)
+#
+#     codebase = dl.GitCodebase(git_url='https://github.com/dataloop-ai/dummy_model_adapter',
+#                               git_tag='master')
+#     model = project.models.create(model_name='Dummy',
+#                                   description='Dummy model implemented in pytorch',
+#                                   output_type=dl.AnnotationType.POINT,
+#                                   scope='public',
+#                                   codebase=codebase,
+#                                   tags=['torch'],
+#                                   default_configuration={
+#                                       'weights_filename': 'model.pth',
+#                                       'input_size': 256,
+#                                   },
+#                                   default_runtime=dl.KubernetesRuntime(pod_type=dl.INSTANCE_CATALOG_HIGHMEM_L,
+#                                                                        runner_image='gcr.io/viewo-g/modelmgmt/resnet:0.0.6',
+#                                                                        autoscaler=dl.KubernetesRabbitmqAutoscaler(
+#                                                                            min_replicas=0,
+#                                                                            max_replicas=1),
+#                                                                        concurrency=1),
+#                                   entry_point='dummy_adapter.py')
+#     return model
 
 
 # def snapshot_creation(project_name, model: dl.Model, env: str = 'prod', resnet_ver='50'):
@@ -118,12 +133,74 @@ def model_creation(project_name, env: str = 'prod'):
 #     return snapshot
 
 
-def model_and_snapshot_creation(project_name, env: str = 'prod'):
-    model = model_creation(project_name, env=env)
-    print("Model : {} - {} created".format(model.name, model.id))
-    # snapshot = snapshot_creation(project_name, model=model, env=env, resnet_ver=resnet_ver)
-    # print("Snapshot : {} - {} created".format(snapshot.name, snapshot.id))
+
+def package_creation(project: dl.Project):
+    metadata = dl.Package.get_ml_metadata(cls=ModelAdapter,
+                                          default_configuration={'weights_filename': 'model.pth',
+                                                                 'input_size': 256},
+                                          output_type=dl.AnnotationType.POINT,
+                                          )
+    module = dl.PackageModule.from_entry_point(entry_point='dummy_adapter.py')
+    package = project.packages.push(package_name='dummy-model',
+                                    src_path=os.getcwd(),
+                                    # description='Global Dataloop ResNet implemented in pytorch',
+                                    is_global=True,
+                                    package_type='ml',
+                                    codebase=dl.GitCodebase(
+                                        git_url='https://github.com/OfirDataloopAI/dummy_model_adapter',
+                                        git_tag='master'),
+                                    modules=[module],
+                                    service_config={
+                                        'runtime': dl.KubernetesRuntime(pod_type=dl.INSTANCE_CATALOG_HIGHMEM_L,
+                                                                        runner_image='gcr.io/viewo-g/modelmgmt/resnet:0.0.7',
+                                                                        autoscaler=dl.KubernetesRabbitmqAutoscaler(
+                                                                            min_replicas=0,
+                                                                            max_replicas=1),
+                                                                        concurrency=1).to_json()},
+                                    metadata=metadata)
+    # package.metadata = {'system': {'ml': {'defaultConfiguration': {'weights_filename': 'model.pth',
+    #                                                                'input_size': 256},
+    #                                       'outputType': dl.AnnotationType.CLASSIFICATION,
+    #                                       'tags': ['torch'], }}}
+    # package = package.update()
+    s = package.services.list().items[0]
+    s.package_revision = package.version
+    s.versions['dtlpy'] = '1.74.9'
+    s.update(True)
+    return package
+
+
+def model_creation(package: dl.Package, project: dl.Project):
+    labels = list()
+    for i in range(10):
+        labels.append(str(i))
+
+    model = package.models.create(model_name='dummy-model',
+                                  description='dummy-model for testing',
+                                  tags=['pretrained', 'no-data'],
+                                  dataset_id=None,
+                                  scope='public',
+                                  # scope='project',
+                                  model_artifacts=[dl.LinkArtifact(
+                                      url='https://storage.googleapis.com/model-mgmt-snapshots/ResNet50/model.pth',
+                                      filename='model.pth')],
+                                  status='trained',
+                                  configuration={'weights_filename': 'model.pth',
+                                                 'batch_size': 16,
+                                                 'num_epochs': 10},
+                                  project_id=project.id,
+                                  labels=labels,
+                                  )
+    return model
 
 
 if __name__ == "__main__":
-    model_and_snapshot_creation("Abeer N Ofir Project")
+    env = 'prod'
+    project_name = 'Abeer N Ofir Project'
+    dl.setenv(env)
+    project = dl.projects.get(project_name)
+    # package_creation(project)
+    # package = project.packages.get('dummy')
+    # package.artifacts.list()
+    # model_creation(package=package, project=project)
+    #https://github.com/dataloop-ai/pytorch_adapters/blob/mgmt3/resnet_adapter.py
