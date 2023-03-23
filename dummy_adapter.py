@@ -92,7 +92,7 @@ def package_creation(project: dl.Project):
                                           output_type=dl.AnnotationType.POINT,
                                           )
     module = dl.PackageModule.from_entry_point(entry_point='dummy_adapter.py')
-    package = project.packages.push(package_name='dummy-model',
+    package = project.packages.push(package_name='dummy',
                                     src_path=os.getcwd(),
                                     # description='Global Dataloop ResNet implemented in pytorch',
                                     is_global=True,
@@ -150,8 +150,10 @@ if __name__ == "__main__":
     project_name = 'QA_MODELS_V3'
     dl.setenv(env)
     project = dl.projects.get(project_name)
-    # package_creation(project)
-    # package = project.packages.get('dummy')
+    package_creation(project)
+    package = project.packages.get('dummy')
     # package.artifacts.list()
-    # model_creation(package=package, project=project)
+    model_creation(package=package, project=project)
+
+    # Useful:
     #https://github.com/dataloop-ai/pytorch_adapters/blob/mgmt3/resnet_adapter.py
